@@ -1,6 +1,9 @@
 var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
+//var cors = require('cors');
+
+var db = require('./src/dbLogin.js');
 //var things = require("./things");
 //app.use("/things", things);
 
@@ -14,6 +17,31 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   next();
 });
+
+
+app.get('/',function(req,resp ){
+    resp.send('This is home page');
+})
+
+app.get('/login/:email',function(req,resp){
+   
+    console.log('your email is '+req.params.email);
+
+  resp.setHeader('Content-Type', 'application/json');
+    if(db.validateEmail(req.params.email)){
+      resp.json({
+          loginstatus:true,
+          message:'Login Successful'
+        })
+    }else{
+        resp.status(400);
+        resp.json({
+          loginStatus:false,
+          message:'Invalid Login credentials'
+        })
+    }
+    
+})
 
 //Signing Up the new user
 app.post("/signup", function(req, res){
