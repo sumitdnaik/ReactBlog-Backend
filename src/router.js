@@ -1,15 +1,14 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 
 const router = express.Router();
-var db = require('./dbLogin.js');
+const db = require('./dbLogin.js');
+
+
+router.use(bodyParser.json());
+router.use(bodyParser.urlencoded({ extended: true }));
 
 //For Testing purpose. This middleware should be removed in case of PROD
-router.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  res.header("Access-Control-Allow-Origin", "*");
-  next();
-});
-
 
 router.get('/',function(req,resp ){
     resp.send('This is home page');
