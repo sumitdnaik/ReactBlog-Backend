@@ -2,7 +2,6 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 
-const router = require('./src/router.js');
 
 //For Testing purpose. This middleware should be removed in case of PROD
 app.use(function(req, res, next) {
@@ -17,4 +16,5 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use('/api',router);
 
+app.use('/api',router);
 app.listen(8000);
