@@ -2,91 +2,110 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const router = express.Router();
+const regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
 
 const MongoClient = require('mongodb').MongoClient;
-
 // Connection URL
 const url = 'mongodb://localhost:27017';
-
 // Database Name
 const dbName = 'myproject';
 
-let db, collection;
-
-// Use connect method to connect to the server
+//Connect to the DB server
 MongoClient.connect(url, function(err, client) {
   if(err){
     console.log("Error:" + err);
     return;
   }
   console.log("Connected successfully to server");
-  db = client.db(dbName);
-  collection = db.collection('documents');
-});
+  const db = client.db(dbName);
+  const collection = db.collection('documents');
 
-router.post('/login',function(req,res){
+  function errorResponse(res){
+    res.status(200);
+    res.json({
+      loggedIn: false,
+      message:'Invalid Login credentials'
+    });
+  }
 
-  const regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
-  res.setHeader('Content-Type', 'application/json');
-
+  //Defining APIs only after connecting to DB
+  router.post('/login',function (req,res) {
+    console.log(req.body);
+    res.setHeader('Content-Type', 'application/json');
     if(regexForEmail.test(req.body.email) && req.body.password.length > 0) {
-
       collection.find({'email': req.body.email}).toArray(function(err, docs) {
         if(err){
-          res.status(400);
-          res.json({
-            loggedIn: false,
-            message:'Invalid Login credentials'
-          });
+          errorResponse(res);
           return;
         }
-
-        if(req.body.password == docs[0].password) {
+        if(docs.length == 0){
+          errorResponse(res);
+        }
+        else if(req.body.password == docs[0].password) {
           console.log("matched");
           res.json({
             loggedIn: true,
             message: 'Login Successful'
           });
         }
-
+        else {
+          res.json({
+            loggedIn: false,
+            message: 'Password Incorrect'
+          });
+        }
       });
-    } else {
-        res.status(400);
-        res.json({
-          loggedIn: false,
-          message:'Invalid Login credentials'
-        });
     }
+    else {
+      errorResponse(res);
+    }
+  });
 
-});
+  //Signing Up the new user
+  router.post("/signup", function(req, res){
+    const regexForName = /^[A-Za-z\s]+$/,
+          regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
+    res.setHeader('Content-Type', 'application/json');
+    if(regexForName.test(req.body.name) && regexForEmail.test(req.body.email) && req.body.password.length > 0) {
 
-//Signing Up the new user
-router.post("/signup", function(req, res){
-  const regexForName = /^[A-Za-z\s]+$/,
-      regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
-      res.setHeader('Content-Type', 'application/json');
+      let obj = {
+        name: req.body.name,
+        email: req.body.email,
+        password: req.body.password
+      };
 
-      console.log(req.body);
-  if(regexForName.test(req.body.name) && regexForEmail.test(req.body.email) && req.body.password.length > 0) {
+      collection.find({'email': req.body.email}).toArray(function(err, docs) {
+        if(err){
+          console.log(err);
+          return;
+        }
 
-    let obj = {
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password
-    };
+        if(docs.length == 0){
+          collection.insert(obj, function(err, result) {
+            console.log("Inserted new user into the collection");
+            res.json({
+              message: "Signed Up Successfully",
+              username: obj.email,
+              status: true
+            });
+          });
+        }
+        else {
+          res.json({
+            message: `User with email ${req.body.email} already exists.`,
+            status: false
+          });
+        }
 
-    collection.insert(obj, function(err, result) {
-      console.log("Inserted new user into the collection");
-      res.json({
-        message: "Signed Up Successfully",
-        username: obj.email
       });
-    });
-  }
-  else {
-    res.status(400);
-    res.json({message: "Bad Request"});
-  }
+
+    }
+    else {
+      res.status(400);
+      res.json({message: "Bad Request"});
+    }
+  });
+
 });
 
 module.exports = router;
