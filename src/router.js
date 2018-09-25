@@ -30,10 +30,13 @@ MongoClient.connect(url, function(err, client) {
 
   //Defining APIs only after connecting to DB
   router.post('/login',function (req,res) {
-    console.log(req.body);
+    let authenticationObj = JSON.parse(req.body.authenticationObj);
+    console.log(authenticationObj);
     res.setHeader('Content-Type', 'application/json');
-    if(regexForEmail.test(req.body.email) && req.body.password.length > 0) {
-      collection.find({'email': req.body.email}).toArray(function(err, docs) {
+    if(regexForEmail.test(authenticationObj.email) && authenticationObj.password.length > 0) {
+      collection.find({'email': authenticationObj.email}).toArray(function(err, docs) {
+        console.log('error is '+ JSON.stringify(err));
+        console.log('error is '+ JSON.stringify(docs));
         if(err){
           errorResponse(res);
           return;
@@ -41,7 +44,7 @@ MongoClient.connect(url, function(err, client) {
         if(docs.length == 0){
           errorResponse(res);
         }
-        else if(req.body.password == docs[0].password) {
+        else if(authenticationObj.password == docs[0].password) {
           console.log("matched");
           res.json({
             loggedIn: true,
@@ -57,12 +60,14 @@ MongoClient.connect(url, function(err, client) {
       });
     }
     else {
+      console.log('wrong email or password');
       errorResponse(res);
     }
   });
 
   //Signing Up the new user
   router.post("/signup", function(req, res){
+    console.log(req.body);
     const regexForName = /^[A-Za-z\s]+$/,
           regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
     res.setHeader('Content-Type', 'application/json');
