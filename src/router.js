@@ -18,8 +18,8 @@ MongoClient.connect(url, function(err, client) {
   }
   console.log("Connected successfully to server");
   const db = client.db(dbName);
-  const collection = db.collection('documents');
-
+  const userCollection = db.collection('users');
+  const storyCollection = db.collection('stories');
   function errorResponse(res){
     res.status(200);
     res.json({
@@ -34,20 +34,19 @@ MongoClient.connect(url, function(err, client) {
     console.log(authenticationObj);
     res.setHeader('Content-Type', 'application/json');
     if(regexForEmail.test(authenticationObj.email) && authenticationObj.password.length > 0) {
-      collection.find({'email': authenticationObj.email}).toArray(function(err, docs) {
-        console.log('error is '+ JSON.stringify(err));
-        console.log('error is '+ JSON.stringify(docs));
+      userCollection.find({'email': authenticationObj.email}).project({'email': 1, 'password': 1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
         if(err){
           errorResponse(res);
           return;
         }
+        console.log(docs[0]);
         if(docs.length == 0){
           errorResponse(res);
         }
         else if(authenticationObj.password == docs[0].password) {
-          console.log("matched");
           res.json({
             loggedIn: true,
+            userData: docs[0],
             message: 'Login Successful'
           });
         }
@@ -60,14 +59,13 @@ MongoClient.connect(url, function(err, client) {
       });
     }
     else {
-      console.log('wrong email or password');
+      console.log('Incorrect Email or Password');
       errorResponse(res);
     }
   });
 
   //Signing Up the new user
   router.post("/signup", function(req, res){
-    console.log(req.body);
     const regexForName = /^[A-Za-z\s]+$/,
           regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
     res.setHeader('Content-Type', 'application/json');
@@ -76,17 +74,18 @@ MongoClient.connect(url, function(err, client) {
       let obj = {
         name: req.body.name,
         email: req.body.email,
-        password: req.body.password
+        password: req.body.password,
+        stories: []
       };
 
-      collection.find({'email': req.body.email}).toArray(function(err, docs) {
+      userCollection.find({'email': req.body.email}).toArray(function(err, docs) {
         if(err){
           console.log(err);
           return;
         }
 
         if(docs.length == 0){
-          collection.insert(obj, function(err, result) {
+          userCollection.insert(obj, function(err, result) {
             console.log("Inserted new user into the collection");
             res.json({
               message: "Signed Up Successfully",
@@ -109,6 +108,47 @@ MongoClient.connect(url, function(err, client) {
       res.status(400);
       res.json({message: "Bad Request"});
     }
+  });
+
+  router.post("/createStory", function(req, res){
+      let createdAtTime = new Date().toISOString();
+      let obj = {
+        content: req.body.content,
+        createdBy: req.body.user,
+        createdAt: createdAtTime
+      };
+
+      function errorRes(){
+        res.json({
+          message: 'Error publishing the story.',
+          status: false
+        });
+      }
+
+      storyCollection.insert(obj, function(err, result) {
+        if(err){
+          console.log(err);
+          errorRes();
+          return;
+        }
+        let storyId = result.insertedIds['0'];
+
+        userCollection.updateOne({'email': req.body.user},  { $addToSet: { stories: storyId } }, function(err, docs) {
+          if(err){
+            errorRes();
+            return;
+          }
+
+        });
+
+        console.log("Inserted new article into the collection");
+
+        res.json({
+          message: "Published Successfully",
+          storyId: storyId,
+          status: true
+        });
+      });
   });
 
 });
