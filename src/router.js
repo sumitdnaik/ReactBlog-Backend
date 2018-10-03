@@ -113,7 +113,10 @@ MongoClient.connect(url, function(err, client) {
   router.post("/createStory", function(req, res){
       let createdAtTime = new Date().toISOString();
       let obj = {
-        content: req.body.content,
+        story: {
+          title: req.body.story.title,
+          content:req.body.story.content
+        },
         createdBy: req.body.user,
         createdAt: createdAtTime
       };
