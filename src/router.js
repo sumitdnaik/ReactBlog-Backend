@@ -70,7 +70,6 @@ MongoClient.connect(url, function(err, client) {
           regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
     res.setHeader('Content-Type', 'application/json');
     if(regexForName.test(req.body.name) && regexForEmail.test(req.body.email) && req.body.password.length > 0) {
-
       let obj = {
         name: req.body.name,
         email: req.body.email,
@@ -83,7 +82,6 @@ MongoClient.connect(url, function(err, client) {
           console.log(err);
           return;
         }
-
         if(docs.length == 0){
           userCollection.insert(obj, function(err, result) {
             console.log("Inserted new user into the collection");
@@ -100,9 +98,7 @@ MongoClient.connect(url, function(err, client) {
             status: false
           });
         }
-
       });
-
     }
     else {
       res.status(400);
@@ -111,11 +107,13 @@ MongoClient.connect(url, function(err, client) {
   });
 
   router.post("/createStory", function(req, res){
-      let createdAtTime = new Date().toISOString();
+      let createdAtTime = new Date();
       let obj = {
         story: {
           title: req.body.story.title,
-          content:req.body.story.content
+          content:req.body.story.content,
+          category: req.body.story.category,
+          summary: req.body.story.summary
         },
         createdBy: req.body.user,
         createdAt: createdAtTime
@@ -135,23 +133,38 @@ MongoClient.connect(url, function(err, client) {
           return;
         }
         let storyId = result.insertedIds['0'];
-
         userCollection.updateOne({'email': req.body.user},  { $addToSet: { stories: storyId } }, function(err, docs) {
           if(err){
             errorRes();
             return;
           }
-
         });
-
         console.log("Inserted new article into the collection");
-
         res.json({
           message: "Published Successfully",
           storyId: storyId,
           status: true
         });
       });
+  });
+
+  router.post("/getHomeStories", function(req, res){
+    storyCollection.find().project({'createdAt': 1, 'createdBy': 1, 'story.title': 1, 'story.category': 1, 'story.summary': 1}).sort({createdAt: -1}).limit(10).toArray(function(err, docs){
+      if(err){
+        res.json({
+          message: 'Error retrieving the stories.',
+          status: false
+        });
+        return;
+      }
+      else {
+        res.json({
+          message: "Stories retrieved successfully",
+          stories: docs,
+          status: true
+        });
+      }
+    });
   });
 
 });
