@@ -30,16 +30,15 @@ MongoClient.connect(url, function(err, client) {
 
   //Defining APIs only after connecting to DB
   router.post('/login',function (req,res) {
-    let authenticationObj = JSON.parse(req.body.authenticationObj);
-    console.log(authenticationObj);
+    let authenticationObj = req.body;
     res.setHeader('Content-Type', 'application/json');
     if(regexForEmail.test(authenticationObj.email) && authenticationObj.password.length > 0) {
-      userCollection.find({'email': authenticationObj.email}).project({'email': 1, 'password': 1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
+      userCollection.find({'email': authenticationObj.email}).project({'email': 1, 'password':1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
+        console.log(docs);
         if(err){
           errorResponse(res);
           return;
         }
-        console.log(docs[0]);
         if(docs.length == 0){
           errorResponse(res);
         }
@@ -115,7 +114,10 @@ MongoClient.connect(url, function(err, client) {
           category: req.body.story.category,
           summary: req.body.story.summary
         },
-        createdBy: req.body.user,
+        createdBy: {
+          name: req.body.user.name,
+          email: req.body.user.email
+        },
         createdAt: createdAtTime
       };
 
