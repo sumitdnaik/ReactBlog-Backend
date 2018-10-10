@@ -3,8 +3,8 @@ const bodyParser = require('body-parser');
 
 const router = express.Router();
 const regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
-
-const MongoClient = require('mongodb').MongoClient;
+const mongo = require('mongodb');
+const MongoClient = mongo.MongoClient;
 // Connection URL
 const url = 'mongodb://localhost:27017';
 // Database Name
@@ -163,6 +163,31 @@ MongoClient.connect(url, function(err, client) {
         res.json({
           message: "Stories retrieved successfully",
           stories: docs,
+          status: true
+        });
+      }
+    });
+  });
+
+  router.post("/readStory", function(req, res){
+    console.log(req.body);
+    var o_id = new mongo.ObjectID(req.body.storyId);
+    storyCollection.find({_id: o_id}).toArray(function(err, docs){
+      if(err){
+        res.json({
+          message: 'Error retrieving the stories.',
+          status: false
+        });
+        return;
+      }
+      else {
+        console.log(docs);
+        res.json({
+          message: "Story retrieved successfully",
+          data: {
+            storyData: docs[0],
+            userData: {}
+          },
           status: true
         });
       }
