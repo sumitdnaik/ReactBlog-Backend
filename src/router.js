@@ -10,6 +10,16 @@ const url = 'mongodb://localhost:27017';
 // Database Name
 const dbName = 'myproject';
 
+//USE STATUS = TRUE FOR SUCCESS RESPONSE, USE FALSE FOR ERROR - SENDING RESPONSE
+
+function errorRes(res, message){
+  res.status(200);
+  res.json({
+      message: message,
+      status: false
+  });
+}
+
 //Connect to the DB server
 MongoClient.connect(url, function(err, client) {
   if(err){
@@ -24,7 +34,8 @@ MongoClient.connect(url, function(err, client) {
     res.status(200);
     res.json({
       loggedIn: false,
-      message:'Invalid Login credentials'
+      message:'Invalid Login credentials',
+      status: false
     });
   }
 
@@ -34,7 +45,6 @@ MongoClient.connect(url, function(err, client) {
     res.setHeader('Content-Type', 'application/json');
     if(regexForEmail.test(authenticationObj.email) && authenticationObj.password.length > 0) {
       userCollection.find({'email': authenticationObj.email}).project({'email': 1, 'password':1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
-        console.log(docs);
         if(err){
           errorResponse(res);
           return;
@@ -43,16 +53,20 @@ MongoClient.connect(url, function(err, client) {
           errorResponse(res);
         }
         else if(authenticationObj.password == docs[0].password) {
+          let obj = {...docs[0]};
+          delete obj.password;
           res.json({
             loggedIn: true,
-            userData: docs[0],
-            message: 'Login Successful'
+            userData: obj,
+            message: 'Login Successful',
+            status: true
           });
         }
         else {
           res.json({
             loggedIn: false,
-            message: 'Password Incorrect'
+            message: 'Password Incorrect',
+            status: false
           });
         }
       });
@@ -92,16 +106,12 @@ MongoClient.connect(url, function(err, client) {
           });
         }
         else {
-          res.json({
-            message: `User with email ${req.body.email} already exists.`,
-            status: false
-          });
+          errorRes(res, `User with email ${req.body.email} already exists.`);
         }
       });
     }
     else {
-      res.status(400);
-      res.json({message: "Bad Request"});
+      errorRes(res, "Bad Request: Field has incorrect or empty value");
     }
   });
 
@@ -121,30 +131,25 @@ MongoClient.connect(url, function(err, client) {
         createdAt: createdAtTime
       };
 
-      function errorRes(){
-        res.json({
-          message: 'Error publishing the story.',
-          status: false
-        });
-      }
-
       storyCollection.insert(obj, function(err, result) {
         if(err){
           console.log(err);
-          errorRes();
+          errorRes(res, 'Error publishing story.');
           return;
         }
         let storyId = result.insertedIds['0'];
         userCollection.updateOne({'email': req.body.user},  { $addToSet: { stories: storyId } }, function(err, docs) {
           if(err){
-            errorRes();
+            errorRes(res, 'Error publishing story.');
             return;
           }
         });
         console.log("Inserted new article into the collection");
         res.json({
           message: "Published Successfully",
-          storyId: storyId,
+          data: {
+            storyId: storyId
+          },
           status: true
         });
       });
@@ -153,10 +158,7 @@ MongoClient.connect(url, function(err, client) {
   router.post("/getHomeStories", function(req, res){
     storyCollection.find().project({'createdAt': 1, 'createdBy': 1, 'story.title': 1, 'story.category': 1, 'story.summary': 1}).sort({createdAt: -1}).limit(10).toArray(function(err, docs){
       if(err){
-        res.json({
-          message: 'Error retrieving the stories.',
-          status: false
-        });
+        errorRes(res, 'Error retrieving the stories.');
         return;
       }
       else {
@@ -170,25 +172,29 @@ MongoClient.connect(url, function(err, client) {
   });
 
   router.post("/readStory", function(req, res){
-    console.log(req.body);
     var o_id = new mongo.ObjectID(req.body.storyId);
     storyCollection.find({_id: o_id}).toArray(function(err, docs){
       if(err){
-        res.json({
-          message: 'Error retrieving the stories.',
-          status: false
-        });
+        errorRes(res, 'Error retrieving the stories.');
         return;
       }
       else {
-        console.log(docs);
-        res.json({
-          message: "Story retrieved successfully",
-          data: {
-            storyData: docs[0],
-            userData: {}
-          },
-          status: true
+        let storyObj = docs[0];
+        userCollection.find({'email': storyObj.createdBy.email}).project({'email': 1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
+          if(err){
+            errorRes(res, 'Error retrieving the stories.');
+            return;
+          }
+          else {
+            res.json({
+              message: "Story retrieved successfully",
+              data: {
+                storyData: storyObj,
+                userData: docs[0]
+              },
+              status: true
+            });
+          }
         });
       }
     });
