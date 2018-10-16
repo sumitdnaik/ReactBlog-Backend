@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const router = express.Router();
-const regexForEmail = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[A-Za-z]+$/;
+const regexForEmail = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const mongo = require('mongodb');
 const MongoClient = mongo.MongoClient;
 // Connection URL
@@ -111,7 +111,7 @@ MongoClient.connect(url, function(err, client) {
       });
     }
     else {
-      errorRes(res, "Bad Request: Field has incorrect or empty value");
+      errorRes(res, "Field has incorrect or empty value");
     }
   });
 
@@ -180,22 +180,30 @@ MongoClient.connect(url, function(err, client) {
       }
       else {
         let storyObj = docs[0];
-        userCollection.find({'email': storyObj.createdBy.email}).project({'email': 1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
-          if(err){
-            errorRes(res, 'Error retrieving the stories.');
-            return;
-          }
-          else {
-            res.json({
-              message: "Story retrieved successfully",
-              data: {
-                storyData: storyObj,
-                userData: docs[0]
-              },
-              status: true
-            });
-          }
+        res.json({
+          message: "Story retrieved successfully",
+          data: {
+            storyData: storyObj
+          },
+          status: true
         });
+
+        // userCollection.find({'email': storyObj.createdBy.email}).project({'email': 1, 'name': 1, '_id': 0}).toArray(function(err, docs) {
+        //   if(err){
+        //     errorRes(res, 'Error retrieving the stories.');
+        //     return;
+        //   }
+        //   else {
+        //     res.json({
+        //       message: "Story retrieved successfully",
+        //       data: {
+        //         storyData: storyObj,
+        //         userData: docs[0]
+        //       },
+        //       status: true
+        //     });
+        //   }
+        // });
       }
     });
   });
