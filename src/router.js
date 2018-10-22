@@ -38,9 +38,11 @@ dbPromise.then((db) => {
     //Defining APIs only after connecting to DB
     router.post('/login',function (req,res) {
       let authenticationObj = req.body;
+      console.log('user data is '+JSON.stringify(authenticationObj));
       res.setHeader('Content-Type', 'application/json');
       if(regexForEmail.test(authenticationObj.email) && authenticationObj.password.length > 0) {
         userCollection.find({'email': authenticationObj.email}).project({'email': 1, 'password':1, 'name': 1}).toArray(function(err, docs) {
+          console.log('user data is '+JSON.stringify(docs));
           if(err){
             errorResponse(res);
             return;
@@ -124,12 +126,14 @@ dbPromise.then((db) => {
     });
 
     router.post('/saveProfile',function (req,res) {
-      console.log('user response is ' +req);
+      console.log('save profile api call');
+      console.log('user response is ' +JSON.stringify(req.body));
       let userProfileObj = req.body;
       res.setHeader('Content-Type', 'application/json');
       //if(regexForEmail.test(userProfileObj.email) && userProfileObj.password.length > 0) {
-        userCollection.find({'email': userProfileObj.email}).project({'email': 1}).toArray(function(err, docs) {
-          console.log('user data is ' +docs);
+        userCollection.updateOne({'email': userProfileObj.email},{ $set : {userProfileObj}} , function(err, docs) {
+          console.log('user data is ' + JSON.stringify(docs));
+          console.log('user error is ' + JSON.stringify(err));
           if(err){
             errorResponse(res);
             return;
