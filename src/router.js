@@ -123,6 +123,31 @@ dbPromise.then((db) => {
       }
     });
 
+    router.post('/saveProfile',function (req,res) {
+      console.log('user response is ' +req);
+      let userProfileObj = req.body;
+      res.setHeader('Content-Type', 'application/json');
+      //if(regexForEmail.test(userProfileObj.email) && userProfileObj.password.length > 0) {
+        userCollection.find({'email': userProfileObj.email}).project({'email': 1}).toArray(function(err, docs) {
+          console.log('user data is ' +docs);
+          if(err){
+            errorResponse(res);
+            return;
+          }
+          if(docs.length == 0){
+            errorResponse(res);
+            return;
+          }
+          
+        });
+      // }
+      // else {
+      //   console.log('Incorrect Email or Password');
+      //   errorResponse(res);
+      // }
+    });
+
+
     router.post("/createStory", JWTAuthMiddleware, function(req, res){
         let createdAtTime = new Date();
         let obj = {
