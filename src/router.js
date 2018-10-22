@@ -126,14 +126,11 @@ dbPromise.then((db) => {
     });
 
     router.post('/saveProfile',function (req,res) {
-      console.log('save profile api call');
-      console.log('user response is ' +JSON.stringify(req.body));
       let userProfileObj = req.body;
       res.setHeader('Content-Type', 'application/json');
       //if(regexForEmail.test(userProfileObj.email) && userProfileObj.password.length > 0) {
-        userCollection.updateOne({'email': userProfileObj.email},{ $set : {userProfileObj}} , function(err, docs) {
-          console.log('user data is ' + JSON.stringify(docs));
-          console.log('user error is ' + JSON.stringify(err));
+        userCollection.updateOne({'email': userProfileObj.email},{ $set : userProfileObj} , function(err, docs) {
+          
           if(err){
             errorResponse(res);
             return;
