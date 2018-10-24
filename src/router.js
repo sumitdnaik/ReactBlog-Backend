@@ -56,7 +56,7 @@ dbPromise.then((db) => {
             let obj = {...docs[0]};
             delete obj.password;
             delete obj._id;
-            let token = jwt.sign({ id: docs[0].email, name: docs[0].name }, process.env.AUTH_SECRET_KEY, {
+            let token = jwt.sign({ id: docs[0]._id}, process.env.AUTH_SECRET_KEY, {
               expiresIn: 86400 // expires in 24 hours
             });
             res.json({
@@ -130,7 +130,7 @@ dbPromise.then((db) => {
       res.setHeader('Content-Type', 'application/json');
       //if(regexForEmail.test(userProfileObj.email) && userProfileObj.password.length > 0) {
         userCollection.updateOne({'email': userProfileObj.email},{ $set : userProfileObj} , function(err, docs) {
-          
+
           if(err){
             errorResponse(res);
             return;
@@ -139,7 +139,7 @@ dbPromise.then((db) => {
             errorResponse(res);
             return;
           }
-          
+
         });
       // }
       // else {
@@ -162,7 +162,9 @@ dbPromise.then((db) => {
             name: req.body.user.name,
             email: req.body.user.email
           },
-          createdAt: createdAtTime
+          createdAt: createdAtTime,
+          upvotedBy: [],
+          upvotes: 0
         };
 
         storyCollection.insert(obj, function(err, result) {
@@ -207,18 +209,38 @@ dbPromise.then((db) => {
 
     router.post("/readStory", function(req, res){
       var o_id = new mongo.ObjectID(req.body.storyId);
+      var token = req.headers['x-access-token'];
       storyCollection.find({_id: o_id}).toArray(function(err, docs){
-        if(err){
+        if(err) {
           errorRes(res, 'Error retrieving the stories.');
           return;
-        }
-        else {
+        } else {
           let storyObj = docs[0];
+          if(token){
+            //storyObj.upvotedBy.indexOf()
+          }
           res.json({
             message: "Story retrieved successfully",
             data: {
               storyData: storyObj
             },
+            status: true
+          });
+        }
+      });
+    });
+
+    router.post("/upvoteStory", JWTAuthMiddleware, function(req, res){
+      var storyId = new mongo.ObjectID(req.body.storyId);
+      var userId = req.body.email;
+      storyCollection.updateOne({ _id: storyId }, { $addToSet: { upvotedBy: userId }, $inc: { upvotes : 1 } },function(err, docs){
+        if(err){
+          errorRes(res, 'Error upvoting the story.');
+          return;
+        }
+        else {
+          res.json({
+            message: "Upvoted successfully.",
             status: true
           });
         }
