@@ -125,7 +125,7 @@ dbPromise.then((db) => {
       }
     });
 
-    router.post('/saveProfile',function (req,res) {
+    router.post('/saveProfile', JWTAuthMiddleware, function (req,res) {
       let userProfileObj = req.body;
       res.setHeader('Content-Type', 'application/json');
       //if(regexForEmail.test(userProfileObj.email) && userProfileObj.password.length > 0) {
@@ -208,40 +208,66 @@ dbPromise.then((db) => {
     });
 
     router.post("/readStory", function(req, res){
-      var o_id = new mongo.ObjectID(req.body.storyId);
-      var token = req.headers['x-access-token'];
-      storyCollection.find({_id: o_id}).toArray(function(err, docs){
-        if(err) {
-          errorRes(res, 'Error retrieving the stories.');
-          return;
-        } else {
-          let storyObj = docs[0];
-          if(token){
-            //storyObj.upvotedBy.indexOf()
-          }
-          res.json({
-            message: "Story retrieved successfully",
-            data: {
-              storyData: storyObj
-            },
-            status: true
+      let o_id = new mongo.ObjectID(req.body.storyId);
+      let token = req.headers['x-access-token'];
+      let userId = null;
+      let tokenPromise = new Promise(function(resolve, reject){
+        if(token){
+          jwt.verify(token, process.env.AUTH_SECRET_KEY, function(err, decoded) {
+            if (err) return res.status(500).send({ status: false, message: 'Failed to authenticate token.' });
+            let decodedUserInfo = { ...decoded };
+            userId = decodedUserInfo.id;
+            resolve(userId);
           });
         }
+        else {
+          resolve(null);
+        }
+      });
+
+      tokenPromise.then((userId) => {
+        console.log(userId);
+        storyCollection.find({_id: o_id}).toArray(function(err, docs){
+          if(err) {
+            errorRes(res, 'Error retrieving the stories.');
+            return;
+          } else {
+            let storyObj = docs[0];
+            if(userId && storyObj.upvotedBy.length > 0){
+              storyObj.hasUserUpvoted = storyObj.upvotedBy.indexOf(userId) != -1;
+            }
+            else {
+              storyObj.hasUserUpvoted = false;
+            }
+            res.json({
+              message: "Story retrieved successfully",
+              data: {
+                storyData: storyObj
+              },
+              status: true
+            });
+          }
+        });
+      }).catch((error) => {
+        console.log(error);
+        errorRes(res, 'Error retrieving the stories.');
       });
     });
 
     router.post("/upvoteStory", JWTAuthMiddleware, function(req, res){
       var storyId = new mongo.ObjectID(req.body.storyId);
-      var userId = req.body.email;
-      storyCollection.updateOne({ _id: storyId }, { $addToSet: { upvotedBy: userId }, $inc: { upvotes : 1 } },function(err, docs){
-        if(err){
+      storyCollection.updateOne({ _id: storyId }, { $addToSet: { upvotedBy: req.decodedUserInfo.id }, $inc: { upvotes : 1 } },function(err, docs){
+        if(err) {
           errorRes(res, 'Error upvoting the story.');
           return;
         }
         else {
-          res.json({
-            message: "Upvoted successfully.",
-            status: true
+          storyCollection.find({_id: storyId}).project({upvotes: 1}).toArray(function(err, docs){
+            console.log(docs);
+            res.json({
+              message: "Upvoted successfully.",
+              status: true
+            });
           });
         }
       });
