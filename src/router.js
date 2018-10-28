@@ -209,15 +209,16 @@ dbPromise.then((db) => {
 
     router.post("/readStory", function(req, res){
       let o_id = new mongo.ObjectID(req.body.storyId);
-      let token = req.headers['x-access-token'];
-      let userId = null;
+      let token = null, userId = null;
+      if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+        token = req.headers.authorization.split(' ')[1];
+      }
       let tokenPromise = new Promise(function(resolve, reject){
         if(token){
           jwt.verify(token, process.env.AUTH_SECRET_KEY, function(err, decoded) {
-            if (err) return res.status(500).send({ status: false, message: 'Failed to authenticate token.' });
+            if (err) return res.status(401).send({ status: false, message: 'Unauthorized access.' });
             let decodedUserInfo = { ...decoded };
-            userId = decodedUserInfo.id;
-            resolve(userId);
+            resolve(decodedUserInfo.id);
           });
         }
         else {
@@ -226,7 +227,6 @@ dbPromise.then((db) => {
       });
 
       tokenPromise.then((userId) => {
-        console.log(userId);
         storyCollection.find({_id: o_id}).toArray(function(err, docs){
           if(err) {
             errorRes(res, 'Error retrieving the stories.');
