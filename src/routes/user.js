@@ -9,11 +9,11 @@ router.post("/getProfile", function(req, res){
       const db = getDb();
       const userCollection = db.collection('users');
       let userProfileObj = req.body;
-      console.log('user email '+userProfileObj.email);
+      console.log('user email '+ JSON.stringify(userProfileObj));
       res.setHeader('Content-Type', 'application/json');
       userCollection.find({'email': userProfileObj.email}).toArray(function(err, docs){
-        console.log('user data '+docs);
-        console.log('user data '+err);
+        console.log('user data '+JSON.stringify(docs));
+        console.log('user error '+err);
       if(err){
         errorUtils.errorRes(res, 'Error fetching user data');
         return;
@@ -21,21 +21,23 @@ router.post("/getProfile", function(req, res){
       else {
         res.json({
           message: "Profile retrieved successfully",
-          stories: docs,
+          profile: docs,
           status: true
         });
       }
   });
 });
 
-router.post('/saveProfile', JWTAuthMiddleware, function (req,res) {
+router.post('/saveProfile', function (req,res) {
       const db = getDb();
       const userCollection = db.collection('users');
       let userProfileObj = req.body;
       res.setHeader('Content-Type', 'application/json');
+      console.log('save profile '+ JSON.stringify(userProfileObj));
       //if(regexForEmail.test(userProfileObj.email) && userProfileObj.password.length > 0) {
         userCollection.updateOne({'email': userProfileObj.email},{ $set : userProfileObj} , function(err, docs) {
-
+          console.log('response '+JSON.stringify(docs));
+          console.log('response '+JSON.stringify(err));
           if(err){
             errorUtils.errorRes(res);
             return;
@@ -43,14 +45,16 @@ router.post('/saveProfile', JWTAuthMiddleware, function (req,res) {
           if(docs.length == 0){
             errorUtils.errorRes(res);
             return;
+          }else {
+            res.json({
+              message: "Profile saved successfully",
+              profile: docs,
+              status: true
+            });
           }
 
         });
-      // }
-      // else {
-      //   console.log('Incorrect Email or Password');
-      //   errorResponse(res);
-      // }
+   
     });
 
 module.exports = router;
